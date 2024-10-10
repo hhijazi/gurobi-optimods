@@ -80,7 +80,6 @@ def solve_opf(
         useef = True
         usejabr = False
         default_solver_params = {
-            "Presolve": 0,
             "SolutionLimit": 1,
             "NodeLimit": 0,
             "GURO_PAR_NLBARSLOPPYLIMIT": 2000,
