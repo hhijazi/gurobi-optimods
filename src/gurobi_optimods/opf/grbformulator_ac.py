@@ -830,7 +830,10 @@ def lpformulator_ac_create_constraints(alldata, model):
         qexpr = gp.QuadExpr()
         doquad = False
         if bus.Gs != 0:
-            expr.add(bus.Gs * (evar[bus] * evar[bus] + fvar[bus] * fvar[bus]))
+            if alldata["use_ef"]:
+                expr.add(bus.Gs * (evar[bus] * evar[bus] + fvar[bus] * fvar[bus]))
+            elif alldata["dopolar"]:
+                expr.add(bus.Gs * (vvar[bus] ** 2))
 
         if not alldata["branchswitching_comp"]:
             for branchid in bus.frombranchids.values():
@@ -860,7 +863,10 @@ def lpformulator_ac_create_constraints(alldata, model):
         expr = gp.QuadExpr()
 
         if bus.Bs != 0:
-            expr.add(-bus.Bs * (evar[bus] * evar[bus] + fvar[bus] * fvar[bus]))
+            if alldata["use_ef"]:
+                expr.add(-bus.Bs * (evar[bus] * evar[bus] + fvar[bus] * fvar[bus]))
+            elif alldata["dopolar"]:
+                expr.add(-bus.Bs * (vvar[bus] ** 2))
 
         if not alldata["branchswitching_comp"]:
             for branchid in bus.frombranchids.values():
