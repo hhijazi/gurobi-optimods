@@ -109,6 +109,16 @@ def lpformulator_optimize(alldata, model, opftype):
             bus = buses[j]
             evar[bus].PStart = 1.0
         model.update()
+    elif alldata["dopolar"]:
+        vvar = alldata["LP"]["vvar"]
+        buses = alldata["buses"]
+        numbuses = alldata["numbuses"]
+        for var in model.getVars():
+            var.PStart = 0.0
+        for j in range(1, 1 + numbuses):
+            bus = buses[j]
+            vvar[bus].PStart = 1.0
+        model.update()
     model.optimize()
 
     # Check model status and re-optimize if numerical trouble or inconclusive results.
