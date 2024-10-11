@@ -75,25 +75,44 @@ def solve_opf(
     """
 
     # use ac-local to run Gurobi as a local solver (stops at the first feasible solution)
-    if opftype.lower() == "ac-local":
+    if opftype.lower() == "acr-local":
         opftype = "ac"
         useef = True
         usejabr = False
+        polar = False
         default_solver_params = {
             "SolutionLimit": 1,
             "NodeLimit": 0,
             "GURO_PAR_NLBARSLOPPYLIMIT": 2000,
         }
-    elif opftype.lower() == "ac":
+    elif opftype.lower() == "acr":
         opftype = "ac"
         useef = True
         usejabr = True
+        polar = False
+        default_solver_params = {"MIPGap": 1e-3, "OptimalityTol": 1e-3}
+    elif opftype.lower() == "acp-local":
+        opftype = "ac"
+        useef = False
+        usejabr = False
+        polar = True
+        default_solver_params = {
+            "SolutionLimit": 1,
+            "NodeLimit": 0,
+            "GURO_PAR_NLBARSLOPPYLIMIT": 2000,
+        }
+    elif opftype.lower() == "acp":
+        opftype = "ac"
+        useef = False
+        usejabr = False
+        polar = True
         default_solver_params = {"MIPGap": 1e-3, "OptimalityTol": 1e-3}
     # AC relaxation using the JABR inequality
     elif opftype.lower() == "acrelax":
         opftype = "ac"
         useef = False
         usejabr = True
+        polar = False
         default_solver_params = {"MIPGap": 1e-3, "OptimalityTol": 1e-3}
     # DC linear approximation (ef & jabr are irrelevant)
     elif opftype.lower() == "dc":
@@ -114,7 +133,7 @@ def solve_opf(
             branchswitching=branch_switching,
             usemipstart=use_mip_start,
             minactivebranches=min_active_branches,
-            polar=False,
+            polar=polar,
             ivtype="aggressive",
             useactivelossineqs=False,
         )

@@ -473,8 +473,9 @@ def lpformulator_ac_create_constraints(alldata, model):
     IDtoCountmap = alldata["IDtoCountmap"]
     cvar = alldata["LP"]["cvar"]
     svar = alldata["LP"]["svar"]
-    vvar = alldata["LP"]["vvar"]
-    thetavar = alldata["LP"]["thetavar"]
+    if alldata["dopolar"]:
+        vvar = alldata["LP"]["vvar"]
+        thetavar = alldata["LP"]["thetavar"]
     if alldata["use_ef"]:
         evar = alldata["LP"]["evar"]
         fvar = alldata["LP"]["fvar"]
@@ -531,16 +532,19 @@ def lpformulator_ac_create_constraints(alldata, model):
             )
         elif alldata["dopolar"]:
             # Gff cff + Gft cft + Bft sft
-            expP = Pvar_f[branch]
-            if alldata["branchswitching_mip"]:
-                expP += twinPvar_f[branch]
             branch.Pdeffconstr = model.addGenConstrNL(
+                Pvar_f[branch],
                 branch.Gff * (vvar[busf] ** 2)
-                + branch.Gft * nlfunc.cos(thetavar[busf] - thetavar[bust])
-                + branch.Bft * nlfunc.sin(thetavar[busf] - thetavar[bust])
-                == expP,
+                + vvar[busf]
+                * vvar[bust]
+                * (
+                    +branch.Gft * nlfunc.cos(thetavar[busf] - thetavar[bust])
+                    + branch.Bft * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                ),
                 name=branch.Pfcname,
             )
+            if alldata["branchswitching_mip"]:
+                branch.Pdeffconstr += twinPvar_f[branch]
         else:
             expr = gp.LinExpr(
                 [branch.Gff, branch.Gft, branch.Bft],
@@ -591,16 +595,19 @@ def lpformulator_ac_create_constraints(alldata, model):
                 name=branch.Ptcname,
             )
         elif alldata["dopolar"]:
-            expP = Pvar_t[branch]
-            if alldata["branchswitching_mip"]:
-                expP += twinPvar_t[branch]
-            branch.Pdeftconstr = model.addConstr(
+            branch.Pdeftconstr = model.addGenConstrNL(
+                Pvar_t[branch],
                 branch.Gtt * (vvar[bust] ** 2)
-                + branch.Gtf * nlfunc.cos(thetavar[busf] - thetavar[bust])
-                - branch.Btf * nlfunc.sin(thetavar[busf] - thetavar[bust])
-                == expP,
+                + vvar[busf]
+                * vvar[bust]
+                * (
+                    +branch.Gtf * nlfunc.cos(thetavar[busf] - thetavar[bust])
+                    - branch.Btf * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                ),
                 name=branch.Ptcname,
             )
+            if alldata["branchswitching_mip"]:
+                branch.Pdeftconstr -= twinPvar_t[branch]
         else:
             expr = gp.LinExpr(
                 [
@@ -670,6 +677,17 @@ def lpformulator_ac_create_constraints(alldata, model):
             )
             continue
 
+        if alldata["dopolar"]:
+            model.addConstr(
+                thetavar[busf] - thetavar[bust] <= branch.maxangle_rad,
+                name="theta_ub_%d" % j,
+            )
+
+            model.addConstr(
+                thetavar[busf] - thetavar[bust] >= branch.minangle_rad,
+                name="theta_lb_%d" % j,
+            )
+
         # -Bff cff - Bft cft + Gft sft
         if alldata["use_ef"]:
             expQ = Qvar_f[branch]
@@ -683,16 +701,19 @@ def lpformulator_ac_create_constraints(alldata, model):
                 name=branch.Qfcname,
             )
         elif alldata["dopolar"]:
-            expQ = Qvar_f[branch]
-            if alldata["branchswitching_mip"]:
-                expQ += twinQvar_f[branch]
-            branch.Qdeffconstr = model.addConstr(
+            branch.Qdeffconstr = model.addGenConstrNL(
+                Qvar_f[branch],
                 -branch.Bff * (vvar[busf] ** 2)
-                - branch.Bft * nlfunc.cos(thetavar[busf] - thetavar[bust])
-                + branch.Gft * nlfunc.sin(thetavar[busf] - thetavar[bust])
-                == expQ,
+                + vvar[busf]
+                * vvar[bust]
+                * (
+                    -branch.Bft * nlfunc.cos(thetavar[busf] - thetavar[bust])
+                    + branch.Gft * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                ),
                 name=branch.Qfcname,
             )
+            if alldata["branchswitching_mip"]:
+                branch.Qdeffconstr -= twinQvar_f[branch]
         else:
             expr = gp.LinExpr(
                 [-branch.Bff, -branch.Bft, branch.Gft],
@@ -744,16 +765,19 @@ def lpformulator_ac_create_constraints(alldata, model):
                 name=branch.Qtcname,
             )
         elif alldata["dopolar"]:
-            expQ = Qvar_t[branch]
-            if alldata["branchswitching_mip"]:
-                expQ += twinQvar_t[branch]
-            branch.Qdeftconstr = model.addConstr(
+            branch.Qdeftconstr = model.addGenConstrNL(
+                Qvar_t[branch],
                 -branch.Btt * (vvar[bust] ** 2)
-                - branch.Btf * nlfunc.cos(thetavar[busf] - thetavar[bust])
-                - branch.Gtf * nlfunc.sin(thetavar[busf] - thetavar[bust])
-                == expQ,
+                + vvar[busf]
+                * vvar[bust]
+                * (
+                    -branch.Btf * nlfunc.cos(thetavar[busf] - thetavar[bust])
+                    - branch.Gtf * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                ),
                 name=branch.Qtcname,
             )
+            if alldata["branchswitching_mip"]:
+                branch.Qdeftconstr -= twinQvar_t[branch]
         else:
             expr = gp.LinExpr(
                 [-branch.Btt, -branch.Btf, -branch.Gtf],  # again, same minus
