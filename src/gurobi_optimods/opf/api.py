@@ -81,8 +81,10 @@ def solve_opf(
         usejabr = False
         polar = False
         default_solver_params = {
+            "Presolve": 0,
             "SolutionLimit": 1,
             "NodeLimit": 0,
+            "TimeLimit": 600,
             "GURO_PAR_NLBARSLOPPYLIMIT": 2000,
         }
     elif opftype.lower() == "acr":
@@ -90,14 +92,21 @@ def solve_opf(
         useef = True
         usejabr = True
         polar = False
-        default_solver_params = {"MIPGap": 1e-3, "OptimalityTol": 1e-3}
+        default_solver_params = {
+            "MIPGap": 1e-3,
+            "OptimalityTol": 1e-3,
+            "Presolve": 0,
+            "GURO_PAR_NLBARSLOPPYLIMIT": 2000,
+        }
     elif opftype.lower() == "acp-local":
         opftype = "ac"
         useef = False
         usejabr = False
         polar = True
         default_solver_params = {
+            "Presolve": 0,
             "SolutionLimit": 1,
+            "TimeLimit": 600,
             "NodeLimit": 0,
             "GURO_PAR_NLBARSLOPPYLIMIT": 2000,
         }
@@ -106,7 +115,11 @@ def solve_opf(
         useef = False
         usejabr = False
         polar = True
-        default_solver_params = {"MIPGap": 1e-3, "OptimalityTol": 1e-3}
+        default_solver_params = {
+            "MIPGap": 1e-3,
+            "OptimalityTol": 1e-3,
+            "GURO_PAR_NLBARSLOPPYLIMIT": 2000,
+        }
     # AC relaxation using the JABR inequality
     elif opftype.lower() == "acrelax":
         opftype = "ac"

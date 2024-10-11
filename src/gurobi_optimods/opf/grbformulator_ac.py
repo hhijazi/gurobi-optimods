@@ -391,8 +391,8 @@ def lpformulator_ac_create_polar_vars(alldata, model):
         # Major assumption! Heuristic: angle diffs between -pi and pi.
         thetaftvar[branch] = model.addVar(
             obj=0.0,
-            lb=-math.pi,
-            ub=math.pi,
+            lb=branch.minangle_rad,
+            ub=branch.maxangle_rad,
             name="thetaft_%d_%d_%d" % (j, busf.nodeID, bust.nodeID),
         )
 
@@ -476,6 +476,7 @@ def lpformulator_ac_create_constraints(alldata, model):
     if alldata["dopolar"]:
         vvar = alldata["LP"]["vvar"]
         thetavar = alldata["LP"]["thetavar"]
+        thetaftvar = alldata["LP"]["thetaftvar"]
     if alldata["use_ef"]:
         evar = alldata["LP"]["evar"]
         fvar = alldata["LP"]["fvar"]
@@ -538,8 +539,8 @@ def lpformulator_ac_create_constraints(alldata, model):
                 + vvar[busf]
                 * vvar[bust]
                 * (
-                    +branch.Gft * nlfunc.cos(thetavar[busf] - thetavar[bust])
-                    + branch.Bft * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                    +branch.Gft * nlfunc.cos(thetaftvar[branch])
+                    + branch.Bft * nlfunc.sin(thetaftvar[branch])
                 ),
                 name=branch.Pfcname,
             )
@@ -601,8 +602,8 @@ def lpformulator_ac_create_constraints(alldata, model):
                 + vvar[busf]
                 * vvar[bust]
                 * (
-                    +branch.Gtf * nlfunc.cos(thetavar[busf] - thetavar[bust])
-                    - branch.Btf * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                    +branch.Gtf * nlfunc.cos(thetaftvar[branch])
+                    - branch.Btf * nlfunc.sin(thetaftvar[branch])
                 ),
                 name=branch.Ptcname,
             )
@@ -679,13 +680,8 @@ def lpformulator_ac_create_constraints(alldata, model):
 
         if alldata["dopolar"]:
             model.addConstr(
-                thetavar[busf] - thetavar[bust] <= branch.maxangle_rad,
-                name="theta_ub_%d" % j,
-            )
-
-            model.addConstr(
-                thetavar[busf] - thetavar[bust] >= branch.minangle_rad,
-                name="theta_lb_%d" % j,
+                thetavar[busf] - thetavar[bust] == thetaftvar[branch],
+                name="thetaft_def_%d" % j,
             )
 
         # -Bff cff - Bft cft + Gft sft
@@ -707,8 +703,8 @@ def lpformulator_ac_create_constraints(alldata, model):
                 + vvar[busf]
                 * vvar[bust]
                 * (
-                    -branch.Bft * nlfunc.cos(thetavar[busf] - thetavar[bust])
-                    + branch.Gft * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                    -branch.Bft * nlfunc.cos(thetaftvar[branch])
+                    + branch.Gft * nlfunc.sin(thetaftvar[branch])
                 ),
                 name=branch.Qfcname,
             )
@@ -771,8 +767,8 @@ def lpformulator_ac_create_constraints(alldata, model):
                 + vvar[busf]
                 * vvar[bust]
                 * (
-                    -branch.Btf * nlfunc.cos(thetavar[busf] - thetavar[bust])
-                    - branch.Gtf * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                    -branch.Btf * nlfunc.cos(thetaftvar[branch])
+                    - branch.Gtf * nlfunc.sin(thetaftvar[branch])
                 ),
                 name=branch.Qtcname,
             )
