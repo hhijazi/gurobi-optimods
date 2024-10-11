@@ -2,7 +2,7 @@ import logging
 import math
 
 import gurobipy as gp
-from gurobipy import GRB
+from gurobipy import GRB, nlfunc
 
 from gurobi_optimods.opf.grbformulator_common import set_gencost_objective
 
@@ -473,6 +473,8 @@ def lpformulator_ac_create_constraints(alldata, model):
     IDtoCountmap = alldata["IDtoCountmap"]
     cvar = alldata["LP"]["cvar"]
     svar = alldata["LP"]["svar"]
+    vvar = alldata["LP"]["vvar"]
+    thetavar = alldata["LP"]["thetavar"]
     if alldata["use_ef"]:
         evar = alldata["LP"]["evar"]
         fvar = alldata["LP"]["fvar"]
@@ -527,6 +529,18 @@ def lpformulator_ac_create_constraints(alldata, model):
                 == expP,
                 name=branch.Pfcname,
             )
+        elif alldata["dopolar"]:
+            # Gff cff + Gft cft + Bft sft
+            expP = Pvar_f[branch]
+            if alldata["branchswitching_mip"]:
+                expP += twinPvar_f[branch]
+            branch.Pdeffconstr = model.addGenConstrNL(
+                branch.Gff * (vvar[busf] ** 2)
+                + branch.Gft * nlfunc.cos(thetavar[busf] - thetavar[bust])
+                + branch.Bft * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                == expP,
+                name=branch.Pfcname,
+            )
         else:
             expr = gp.LinExpr(
                 [branch.Gff, branch.Gft, branch.Bft],
@@ -573,6 +587,17 @@ def lpformulator_ac_create_constraints(alldata, model):
                 branch.Gtt * (evar[bust] * evar[bust] + fvar[bust] * fvar[bust])
                 + branch.Gtf * (evar[busf] * evar[bust] + fvar[busf] * fvar[bust])
                 - branch.Btf * (-evar[busf] * fvar[bust] + fvar[busf] * evar[bust])
+                == expP,
+                name=branch.Ptcname,
+            )
+        elif alldata["dopolar"]:
+            expP = Pvar_t[branch]
+            if alldata["branchswitching_mip"]:
+                expP += twinPvar_t[branch]
+            branch.Pdeftconstr = model.addConstr(
+                branch.Gtt * (vvar[bust] ** 2)
+                + branch.Gtf * nlfunc.cos(thetavar[busf] - thetavar[bust])
+                - branch.Btf * nlfunc.sin(thetavar[busf] - thetavar[bust])
                 == expP,
                 name=branch.Ptcname,
             )
@@ -657,6 +682,17 @@ def lpformulator_ac_create_constraints(alldata, model):
                 == expQ,
                 name=branch.Qfcname,
             )
+        elif alldata["dopolar"]:
+            expQ = Qvar_f[branch]
+            if alldata["branchswitching_mip"]:
+                expQ += twinQvar_f[branch]
+            branch.Qdeffconstr = model.addConstr(
+                -branch.Bff * (vvar[busf] ** 2)
+                - branch.Bft * nlfunc.cos(thetavar[busf] - thetavar[bust])
+                + branch.Gft * nlfunc.sin(thetavar[busf] - thetavar[bust])
+                == expQ,
+                name=branch.Qfcname,
+            )
         else:
             expr = gp.LinExpr(
                 [-branch.Bff, -branch.Bft, branch.Gft],
@@ -704,6 +740,17 @@ def lpformulator_ac_create_constraints(alldata, model):
                 -branch.Btt * (evar[bust] * evar[bust] + fvar[bust] * fvar[bust])
                 - branch.Btf * (evar[busf] * evar[bust] + fvar[busf] * fvar[bust])
                 - branch.Gtf * (-evar[busf] * fvar[bust] + fvar[busf] * evar[bust])
+                == expQ,
+                name=branch.Qtcname,
+            )
+        elif alldata["dopolar"]:
+            expQ = Qvar_t[branch]
+            if alldata["branchswitching_mip"]:
+                expQ += twinQvar_t[branch]
+            branch.Qdeftconstr = model.addConstr(
+                -branch.Btt * (vvar[bust] ** 2)
+                - branch.Btf * nlfunc.cos(thetavar[busf] - thetavar[bust])
+                - branch.Gtf * nlfunc.sin(thetavar[busf] - thetavar[bust])
                 == expQ,
                 name=branch.Qtcname,
             )
@@ -992,10 +1039,6 @@ def lpformulator_ac_create_constraints(alldata, model):
         logger.info(f"    {count} active loss constraints added.")
     else:
         logger.info("  Skipping active loss inequalities.")
-
-    # Polar representation
-    if alldata["dopolar"]:
-        lpformulator_ac_add_polarconstraints(alldata, model)
 
     # nonconvex e, f representation
     if not alldata["skipjabr"] and alldata["use_ef"]:
